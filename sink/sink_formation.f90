@@ -223,7 +223,9 @@ subroutine sink_formation(r,g,m,p,c,msink_loc)
         p%tp(p%npart)=g%texp
         ! Compute level
         p%levelp(p%npart)=c%peak_level(j)
-     endif
+        p%idm(p%npart)=0
+        p%tm(p%npart)=-1000d0
+      endif
   end do
   p%tailp(r%nlevelmax)=p%tailp(r%nlevelmax)+nsink_loc
 

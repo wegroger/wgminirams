@@ -168,9 +168,7 @@ contains
     !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     macc_loc=0
     do ipart = p%headp(ilevel), p%tailp(ilevel)
-    if (p%mp(ipart) ==0)then 
-            cycle
-    endif
+       if(p%mp(ipart)==0)cycle
        !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
        ! Sink Accretion
        !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
