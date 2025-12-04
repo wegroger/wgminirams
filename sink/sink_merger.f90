@@ -22,6 +22,7 @@ module sink_merger_module
      real(kind=8), dimension(1:3) :: velocity
      logical :: exists
      integer :: cpu_owner
+     integer :: merged_into = 0
   end type sink_data_t
 
   type :: out_merger_t
@@ -620,6 +621,7 @@ contains
                 p%mp(j) = 0.0d0  ! Mark for deletion
                 p%xp(j,1:3) = com_position(1:3)
                 p%vp(j,1:3) = momentum(1:3) / total_mass
+                p%merged_into = id_keep
                 if(s%r%verbose) write(*,*) 'CPU', myrank, ': Deleted sink', id_delete
                 exit
              endif
