@@ -589,7 +589,7 @@ contains
 
        ! Skip if we couldn't find both sinks
        if(sink1_idx == 0 .or. sink2_idx == 0) cycle
-
+       sink_data(sink2_idx)%merged_into = id_keep
        ! Calculate merged properties (ALL CPUs do this for consistency)
        mass1 = sink_data(sink1_idx)%mass
        mass2 = sink_data(sink2_idx)%mass
@@ -621,7 +621,7 @@ contains
                 p%mp(j) = 0.0d0  ! Mark for deletion
                 p%xp(j,1:3) = com_position(1:3)
                 p%vp(j,1:3) = momentum(1:3) / total_mass
-                p%merged_into = id_keep
+                p%idm(j) = id_keep
                 if(s%r%verbose) write(*,*) 'CPU', myrank, ': Deleted sink', id_delete
                 exit
              endif
