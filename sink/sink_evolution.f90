@@ -168,7 +168,8 @@ contains
     !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
     macc_loc=0
     do ipart = p%headp(ilevel), p%tailp(ilevel)
-
+    if (p%mp(ipart) ==0)then 
+            cycle
        !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
        ! Sink Accretion
        !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -215,7 +216,7 @@ contains
              if(p%xp(ipart,idim)>=r%box_size(idim))p%xp(ipart,idim)=p%xp(ipart,idim)-r%box_size(idim)
           endif
        end do
-
+    endif
     end do ! End loop over ipart
 
     !-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
