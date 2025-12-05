@@ -622,7 +622,7 @@ contains
                 p%xp(j,1:3) = com_position(1:3)
                 p%vp(j,1:3) = momentum(1:3) / total_mass
                 p%idm(j) = id_keep
-                p&tm(j) = g%texp
+                p%tm(j) = s%g%texp
                 if(s%r%verbose) write(*,*) 'CPU', myrank, ': Deleted sink', id_delete
                 exit
              endif
