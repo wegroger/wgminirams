@@ -443,6 +443,16 @@ def rd_part(nout,**kwargs):
 
             p.birth_date[ipart:ipart+npart2] = xp
 
+            # read particle merging times
+            if(backup):
+                xp = np.fromfile(filename,dtype=np.float64,count=npart2,offset=offset)
+                offset = offset + npart2*8
+            else:
+                xp = np.fromfile(filename,dtype=np.float32,count=npart2,offset=offset)
+                offset = offset + npart2*4
+
+            p.merging_date[ipart:ipart+npart2] = xp
+
         if(tree):
             # read particle birth times
             if(backup):
@@ -475,6 +485,18 @@ def rd_part(nout,**kwargs):
         offset = offset + npart2*4
 
         p.birth_id[ipart:ipart+npart2] = xp
+
+        # read particle merging id and tracking id
+        if(sink):
+            xp = np.fromfile(filename,dtype=np.int32,count=npart2,offset=offset)
+            offset = offset + npart2*4
+
+            p.merging_id[ipart:ipart+npart2] = xp
+
+            xp = np.fromfile(filename,dtype=np.int32,count=npart2,offset=offset)
+            offset = offset + npart2*4
+
+            p.tracking_id[ipart:ipart+npart2] = xp
 
         # read particle merging id and tracking id
         if(tree):
