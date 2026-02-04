@@ -510,7 +510,10 @@ subroutine input_sink_ascii(mdl,r,g,p,npart_tot)
   integer(kind=8)::indglob
   integer(kind=8)::jpart,npart,nremain
   integer(kind=8),dimension(1:g%ncpu+1)::start_ind
+  ! MODIFIED: Added merge_time variable for tm
   real(kind=8)::xx1,xx2,xx3,vv1,vv2,vv3,mm1,zz1,tt1,jj1,jj2,jj3
+  real(kind=8)::merge_time
+  integer(kind=8)::merge_id
   character(LEN=80)::filename
 
   !--------------------------------------
@@ -538,15 +541,15 @@ subroutine input_sink_ascii(mdl,r,g,p,npart_tot)
   jpart_loc=0
   do
 #if NDIM==1
-     read(10,*,end=100)xx1,vv1,jj1,mm1,tt1
+     read(10,*,end=100)xx1,vv1,jj1,mm1,tt1,merge_time,merge_id
      if(ABS(xx1)<r%box_size(1)/2.0d0)then
 #endif
 #if NDIM==2
-     read(10,*,end=100)xx1,xx2,vv1,vv2,jj1,jj2,mm1,tt1
+     read(10,*,end=100)xx1,xx2,vv1,vv2,jj1,jj2,mm1,tt1,merge_time,merge_id
      if(ABS(xx1)<r%box_size(1)/2.0d0.AND.ABS(xx2)<r%box_size(2)/2.0d0)then
 #endif
 #if NDIM==3
-     read(10,*,end=100)xx1,xx2,xx3,vv1,vv2,vv3,jj1,jj2,jj3,mm1,tt1
+     read(10,*,end=100)xx1,xx2,xx3,vv1,vv2,vv3,jj1,jj2,jj3,mm1,tt1,merge_time,merge_id
      if(ABS(xx1)<r%box_size(1)/2.0d0.AND.ABS(xx2)<r%box_size(2)/2.0d0.AND.ABS(xx3)<r%box_size(3)/2.0d0)then
 #endif
         jpart=jpart+1
@@ -575,6 +578,9 @@ subroutine input_sink_ascii(mdl,r,g,p,npart_tot)
 #endif
            p%mp(jpart_loc  )=mm1
            p%tp(jpart_loc  )=tt1
+           p%tm(jpart_loc  )=merge_time
+           p%idm(jpart_loc )=merge_id
+           
            p%idp(jpart_loc )=indglob
            p%levelp(jpart_loc)=r%levelmin
         end if
