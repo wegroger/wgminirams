@@ -20,13 +20,14 @@ module sink_merger_module
      real(kind=8) :: mass
      real(kind=8), dimension(1:3) :: position
      real(kind=8), dimension(1:3) :: velocity
+     integer :: level
      logical :: exists
      integer :: cpu_owner
      integer :: merged_into = 0
   end type sink_data_t
 
   type :: out_merger_t
-     integer :: dummy_field = 0  ! Add this output type
+     integer :: dummy_field = 0
   end type out_merger_t
 contains
 
@@ -93,7 +94,6 @@ contains
     if(pst%s%r%verbose) write(*,*) 'Proc:', pst%s%g%myid
     if(pst%s%r%verbose) write(*,*) 'Local collision count:', n_count_local
 
-
     ! Step 3: Gather all collisions across MPI
     call gather_all_collisions(local_collision_pairs, n_count_local, all_id1, all_id2, n_count_total)
     if(n_count_total == 0) then
@@ -114,7 +114,7 @@ contains
     call mpi_gather_all_sink_data(pst%s%sink, unique_ids, n_unique, global_sink_data)
 
     ! Step 6: Apply filtering with pre-gathered data
-    call filter_collision_pairs_fast(all_id1, all_id2, n_count_total, n_valid_mergers, &
+    call filter_collision_pairs_fast(pst, all_id1, all_id2, n_count_total, n_valid_mergers, &
          dx_loc, factG, global_sink_data, n_unique)
 
     if(pst%s%r%verbose .and. pst%s%g%myid == 1) write(*,*) 'Valid mergers after filtering:', n_valid_mergers
@@ -283,7 +283,7 @@ contains
 
     integer::i, ierr, nprocs, myrank
     integer,dimension(:),allocatable::recvcounts, displs
-    integer,dimension(:),allocatable::temp_id1, temp_id2  ! Temporary arrays
+    integer,dimension(:),allocatable::temp_id1, temp_id2
 
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nprocs, ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myrank, ierr)
@@ -302,17 +302,14 @@ contains
        displs(i) = displs(i-1) + recvcounts(i-1)
     end do
 
-    ! Allocate temporary arrays for local data
     allocate(temp_id1(n_local))
     allocate(temp_id2(n_local))
   
-    ! Copy from derived type to temporary arrays
     do i = 1, n_local
        temp_id1(i) = local_pairs(i)%id1
        temp_id2(i) = local_pairs(i)%id2
     end do
 
-    ! Now use the temporary arrays for MPI communication
     allocate(all_id1(n_total))
     allocate(all_id2(n_total))
   
@@ -355,6 +352,7 @@ contains
           write(*,*) 'Sink Collision ID:', all_id1(i)
           temp_ids(n_unique) = all_id1(i)
        endif
+       
        found = .false.
        do j = 1, n_unique
           if(temp_ids(j) == all_id2(i)) then
@@ -389,7 +387,7 @@ contains
     real(kind=8),dimension(:,:),allocatable::all_masses
     real(kind=8),dimension(:,:,:),allocatable::all_positions, all_velocities
     logical,dimension(:,:),allocatable::all_exists
-    integer,dimension(:,:),allocatable::all_owners
+    integer,dimension(:,:),allocatable::all_owners, all_levels
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myrank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nprocs, ierr)
@@ -400,11 +398,13 @@ contains
     allocate(all_velocities(n_unique, 3, nprocs))
     allocate(all_exists(n_unique, nprocs))
     allocate(all_owners(n_unique, nprocs))
+    allocate(all_levels(n_unique, nprocs))
 
     ! Initialize local data sections
     all_masses(:, myrank+1) = 0.0d0
     all_exists(:, myrank+1) = .false.
     all_owners(:, myrank+1) = -1
+    all_levels(:, myrank+1) = 0
     all_positions(:, :, myrank+1) = 0.0d0
     all_velocities(:, :, myrank+1) = 0.0d0
 
@@ -417,6 +417,7 @@ contains
              all_positions(i, 1:3, myrank+1) = p%xp(ipart, 1:3)
              all_velocities(i, 1:3, myrank+1) = p%vp(ipart, 1:3)
              all_owners(i, myrank+1) = myrank
+             all_levels(i, myrank+1) = p%levelp(ipart)
              exit
           endif
        end do
@@ -432,6 +433,9 @@ contains
     call MPI_ALLGATHER(MPI_IN_PLACE, n_unique, MPI_INTEGER, &
          all_owners, n_unique, MPI_INTEGER, MPI_COMM_WORLD, ierr)
 
+    call MPI_ALLGATHER(MPI_IN_PLACE, n_unique, MPI_INTEGER, &
+         all_levels, n_unique, MPI_INTEGER, MPI_COMM_WORLD, ierr)
+
     call MPI_ALLGATHER(MPI_IN_PLACE, 3*n_unique, MPI_DOUBLE_PRECISION, &
          all_positions, 3*n_unique, MPI_DOUBLE_PRECISION, MPI_COMM_WORLD, ierr)
 
@@ -445,6 +449,7 @@ contains
        sink_data(i)%mass = 0.0d0
        sink_data(i)%position = 0.0d0
        sink_data(i)%velocity = 0.0d0
+       sink_data(i)%level = 0
        sink_data(i)%cpu_owner = -1
 
        ! Find first valid entry across all processes
@@ -454,21 +459,25 @@ contains
              sink_data(i)%mass = all_masses(i, j)
              sink_data(i)%position(1:3) = all_positions(i, 1:3, j)
              sink_data(i)%velocity(1:3) = all_velocities(i, 1:3, j)
+             sink_data(i)%level = all_levels(i, j)
              sink_data(i)%cpu_owner = all_owners(i, j)
              exit
           endif
        end do
     end do
 
-    deallocate(all_masses, all_positions, all_velocities, all_exists, all_owners)
+    deallocate(all_masses, all_positions, all_velocities, all_exists, all_owners, all_levels)
 
   end subroutine mpi_gather_all_sink_data
 
   !==============================================================================
   ! FAST FILTERING with pre-gathered sink data
   !==============================================================================
-  subroutine filter_collision_pairs_fast(all_id1, all_id2, n_total, n_filtered, &
+  subroutine filter_collision_pairs_fast(pst, all_id1, all_id2, n_total, n_filtered, &
                                         dx_loc, factG, sink_data, n_sinks)
+    use ramses_commons, only: pst_t
+    implicit none
+    type(pst_t)::pst
     integer,dimension(:)::all_id1, all_id2
     integer::n_total, n_filtered, n_sinks
     real(kind=8)::dx_loc, factG
@@ -511,7 +520,7 @@ contains
       endif
 
       ! Apply physical criteria
-      should_merge = check_merger_criteria(sink_data(sink1_idx), sink_data(sink2_idx), dx_loc, factG)
+      should_merge = check_merger_criteria(sink_data(sink1_idx), sink_data(sink2_idx), pst%s%r%boxlen, factG, pst%s%r)
       if(.not. should_merge) then
         all_id1(i) = 0
         all_id2(i) = 0
@@ -590,6 +599,7 @@ contains
        ! Skip if we couldn't find both sinks
        if(sink1_idx == 0 .or. sink2_idx == 0) cycle
        sink_data(sink2_idx)%merged_into = id_keep
+       
        ! Calculate merged properties (ALL CPUs do this for consistency)
        mass1 = sink_data(sink1_idx)%mass
        mass2 = sink_data(sink2_idx)%mass
@@ -718,15 +728,29 @@ contains
   end subroutine collect_collisions
 
   !==============================================================================
-  ! Check merger criteria (binding energy)
+  ! Check merger criteria (binding energy) using sink levels
   !==============================================================================
-  logical function check_merger_criteria(sink1,sink2,dx_loc,factG)
+  logical function check_merger_criteria(sink1,sink2,boxlen,factG,r)
+    use amr_commons, only: run_t
     implicit none
     type(sink_data_t)::sink1,sink2
-    real(kind=8)::dx_loc,factG
+    real(kind=8)::boxlen,factG
+    type(run_t)::r
 
     real(kind=8)::dx,dy,dz,separation,dvx,dvy,dvz,vel_squared
     real(kind=8)::total_mass,binding_criteria
+    integer::merger_level
+    real(kind=8)::dx_merger
+
+    ! If sink refinement is on, ALWAYS use max level
+    if(r%sink_refine) then
+       merger_level = r%nlevelmax
+    else
+       ! Otherwise use the finer of the two sinks' actual levels
+       merger_level = max(sink1%level, sink2%level)
+    endif
+
+    dx_merger = boxlen / 2**merger_level
 
     check_merger_criteria = .false.
 
@@ -742,8 +766,8 @@ contains
 
     total_mass = sink1%mass + sink2%mass
 
-    if(separation < dx_loc) then
-       binding_criteria = (factG * total_mass) / dx_loc * (1.0d0 - (separation/dx_loc)**2)
+    if(separation < dx_merger) then
+       binding_criteria = (factG * total_mass) / dx_merger * (1.0d0 - (separation/dx_merger)**2)
 
        if(vel_squared < binding_criteria) then
           check_merger_criteria = .true.
