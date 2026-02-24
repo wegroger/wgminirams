@@ -165,7 +165,6 @@ contains
 #ifdef HYDRO
 #if NDIM==3
     associate(r=>s%r,g=>s%g,m=>s%m)
-
     ! Set flag1 to max possible index
     do igrid=m%head(ilevel),m%tail(ilevel)
        do ind=1,twotondim
@@ -179,7 +178,7 @@ contains
          init=init_flush_idsinkmin, flush=pack_flush_idsinkmin, combine=unpack_flush_idsinkmin)
 
     hash_nbor(0) = ilevel+1
-    do ipart = p%headp(ilevel), p%tailp(ilevel)
+    do ipart = 1, p%npart
 
        ! Skip zero-mass sinks
        if(p%mp(ipart) <= 0.0d0) cycle
