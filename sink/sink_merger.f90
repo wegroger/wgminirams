@@ -326,6 +326,8 @@ contains
   !==============================================================================
   subroutine build_unique_sink_list(pst, all_id1, all_id2, n_pairs, unique_ids, n_unique)
     use ramses_commons, only: pst_t
+    implicit none
+    type(pst_t)::pst
     integer,dimension(:)::all_id1, all_id2
     integer::n_pairs
     integer,dimension(:),allocatable::unique_ids
