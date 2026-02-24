@@ -105,7 +105,7 @@ contains
     if(pst%s%r%verbose .and. pst%s%g%myid == 1) write(*,*) 'Total collision count:', n_count_total
 
     ! Step 4: Build unique sink ID list
-    call build_unique_sink_list(all_id1, all_id2, n_count_total, unique_ids, n_unique)
+    call build_unique_sink_list(pst, all_id1, all_id2, n_count_total, unique_ids, n_unique)
 
     if(pst%s%r%verbose .and. pst%s%g%myid == 1) write(*,*) 'Unique sinks involved:', n_unique
 
@@ -115,7 +115,7 @@ contains
 
     ! Step 6: Apply filtering with pre-gathered data
     call filter_collision_pairs_fast(pst, all_id1, all_id2, n_count_total, n_valid_mergers, &
-         dx_loc, factG, global_sink_data, n_unique)
+         factG, global_sink_data, n_unique)
 
     if(pst%s%r%verbose .and. pst%s%g%myid == 1) write(*,*) 'Valid mergers after filtering:', n_valid_mergers
 
@@ -324,7 +324,8 @@ contains
   !==============================================================================
   ! Build unique sink ID list from collision pairs
   !==============================================================================
-  subroutine build_unique_sink_list(all_id1, all_id2, n_pairs, unique_ids, n_unique)
+  subroutine build_unique_sink_list(pst, all_id1, all_id2, n_pairs, unique_ids, n_unique)
+    use ramses_commons, only: pst_t
     integer,dimension(:)::all_id1, all_id2
     integer::n_pairs
     integer,dimension(:),allocatable::unique_ids
@@ -349,7 +350,7 @@ contains
        end do
        if(.not. found) then
           n_unique = n_unique + 1
-          write(*,*) 'Sink Collision ID:', all_id1(i)
+          if(pst%s%r%verbose) write(*,*) 'Sink Collision ID:', all_id1(i)
           temp_ids(n_unique) = all_id1(i)
        endif
        
@@ -474,13 +475,13 @@ contains
   ! FAST FILTERING with pre-gathered sink data
   !==============================================================================
   subroutine filter_collision_pairs_fast(pst, all_id1, all_id2, n_total, n_filtered, &
-                                        dx_loc, factG, sink_data, n_sinks)
+                                        factG, sink_data, n_sinks)
     use ramses_commons, only: pst_t
     implicit none
     type(pst_t)::pst
     integer,dimension(:)::all_id1, all_id2
     integer::n_total, n_filtered, n_sinks
-    real(kind=8)::dx_loc, factG
+    real(kind=8)::factG
     type(sink_data_t),dimension(:)::sink_data
 
     integer::i, j, sink1_idx, sink2_idx
