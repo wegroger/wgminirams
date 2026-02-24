@@ -152,7 +152,7 @@ contains
 
     real(kind=8),dimension(1:ndim)::xcen
     integer(kind=8),dimension(0:ndim)::hash_nbor
-    integer::ipart,icelln,j
+    integer::ipart,icelln,j,sink_level
     type(oct),pointer::gridn
     
     real(kind=8),dimension(1:ndim,1:nBHnei)::xBHnei
@@ -179,6 +179,9 @@ contains
 
     hash_nbor(0) = ilevel+1
     do ipart = 1, p%npart
+       sink_level = p%levelp(ipart)
+       !Only deposit if +-1 level
+       if(abs(sink_level - ilevel) > 1) cycle
 
        ! Skip zero-mass sinks
        if(p%mp(ipart) <= 0.0d0) cycle
