@@ -179,7 +179,7 @@ contains
          init=init_flush_idsinkmin, flush=pack_flush_idsinkmin, combine=unpack_flush_idsinkmin)
 
     hash_nbor(0) = ilevel+1
-    do ipart = p%headp(r%nlevelmax), p%tailp(r%nlevelmax)
+    do ipart = p%headp(ilevel), p%tailp(ilevel)
 
        ! Skip zero-mass sinks
        if(p%mp(ipart) <= 0.0d0) cycle
@@ -687,7 +687,7 @@ contains
          pack=pack_fetch_flag,unpack=unpack_fetch_flag,&
          hilbert=m%domain,pack_size=storage_size(dummy_int4)/32)
 
-    do ipart = p%headp(r%nlevelmax), p%tailp(r%nlevelmax)
+    do ipart = p%headp(ilevel), p%tailp(ilevel)
        my_id = p%idp(ipart)
 
        ! Skip zero-mass sinks
